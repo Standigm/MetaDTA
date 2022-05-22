@@ -9,8 +9,8 @@ We upload a small version of binding affinity dataset originally from BindingDB.
 
 ## Environment setting
 
-conda env create --file environment.yaml
-conda activate metadta
+    conda env create --file environment.yaml
+    conda activate metadta
 
 ## Quick Run
 The simple model training code is 
