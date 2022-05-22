@@ -11,14 +11,15 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import mean_absolute_error
 
+from get_data import data_download
 from model import LatentBinModel
 from dataset import load_data, MetaDataset, FewShotCollator
 
 device = "cuda" if t.cuda.is_available() else "cpu"
 
 
-def adjust_learning_rate(optimizer, step_num, warmup_step=4000):
-    lr = 0.001 * warmup_step**0.5 * min(step_num * warmup_step**-1.5, step_num**-0.5)
+def adjust_learning_rate(init_lr, optimizer, step_num, warmup_step=4000):
+    lr = init_lr * warmup_step**0.5 * min(step_num * warmup_step**-1.5, step_num**-0.5)
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
@@ -38,7 +39,7 @@ def train(model: nn.Module, optimizer: t.optim,
         truth_list, pred_list = [], []
         train_loss_list = []
         for data in tqdm(train_loader):
-            adjust_learning_rate(optimizer, train_step+1)
+            adjust_learning_rate(args.lr, optimizer, train_step+1)
             context_x, context_y, target_x, target_y, target_y_f = data
             context_x = context_x.to(device)
             context_y = context_y.to(device)
@@ -47,7 +48,6 @@ def train(model: nn.Module, optimizer: t.optim,
             target_y_f = target_y_f.to(device)
 
             y_pred, sigma, kl, loss = model(context_x, context_y, target_x, target_y, target_y_f)
-            print(kl, loss)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -131,7 +131,6 @@ if __name__ == '__main__':
     parser.add_argument('--d_model', default=128, type=int, help='Hidden Space dimension')
     parser.add_argument('--n_CA', default=2, type=int, help='Layer Number of MultiHead CrossAttention')
     parser.add_argument('--n_SA', default=2, type=int, help='Layer Number of MultiHead SelfAttention')
-    parser.add_argument('--input', default='Bin', type=str, help='Data Input Type. [Scalar, Bin]')
     parser.add_argument('--use_latent_path', default=False, action='store_true',
                         help="")
 
@@ -159,6 +158,8 @@ if __name__ == '__main__':
     ligand_cnt = 100 ## number of support set
     use_latent_path = args.use_latent_path
 
+    ## check data and download
+    data_download()
     train_coo, test_coo, total_ecfp = load_data()
 
     input_dim = total_ecfp.shape[-1]
